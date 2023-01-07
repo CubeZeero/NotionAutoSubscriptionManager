@@ -41,14 +41,14 @@ function checkSubscription() {
 
   for (let i = 0; i < notion_db_data['results'].length; i++){
 
-    var date_obj = new Date();
-    var date_milliseconds = date_obj.getTime()
+    var date_obj = dayjs.dayjs();
+    var date_milliseconds = dayjs.dayjs(date_obj.format('YYYY-MM-DD')).valueOf()
 
-    var paymentDate_next = notion_db_data['results'][i]['properties']['次の更新日']['date']['start']
+    var NextPaymentDate = notion_db_data['results'][i]['properties']['次の更新日']['date']['start']
 
-    var remainingDays = Number(notion_db_data['results'][i]['properties']['更新までの残日数']['formula']['string'].replace('日', '')) - 1
+    var date_obj_paymentDate = dayjs.dayjs(NextPaymentDate);
+    var remainingDays = Number(date_obj_paymentDate.diff(date_obj.format('YYYY-MM-DD'), 'd'))
     var alertDay = Number(notion_db_data['results'][i]['properties']['更新日の通知(n日前)']['number'])
-    var date_obj_paymentDate = new Date(paymentDate_next);
 
     if(remainingDays == alertDay &&
         notion_db_data['results'][i]['properties']['通知の有無']['select']['name'] == '有効' &&
@@ -57,21 +57,20 @@ function checkSubscription() {
       sendEmail(notion_db_data['results'][i]['properties']['サービス名']['title'][0]['plain_text'],
                 remainingDays,
                 notion_db_data['results'][i]['properties']['利用料金']['number'],
-                paymentDate_next)
+                NextPaymentDate)
     }
     
-    if(date_obj_paymentDate.getTime() < date_milliseconds){
+    if(date_obj_paymentDate.valueOf() < date_milliseconds){
 
       if(notion_db_data['results'][i]['properties']['更新間隔']['select']['name'] == '月'){
-          date_obj_paymentDate.setMonth(date_obj.getMonth() + 1);
-          date_obj_paymentDate.setFullYear(date_obj.getFullYear());
+        var NextPaymentDate_set = date_obj_paymentDate.add(1, 'M').format('YYYY-MM-DD')
       }
 
       if(notion_db_data['results'][i]['properties']['更新間隔']['select']['name'] == '年'){
-        date_obj_paymentDate.setFullYear(date_obj_paymentDate.getFullYear() + 1);
+        var NextPaymentDate_set = date_obj_paymentDate.add(1, 'y').format('YYYY-MM-DD')
       }
 
-      var patch_dbData = {"properties": {'次の更新日': {"date": {'start': Utilities.formatDate(date_obj_paymentDate, timeZone, 'yyyy-MM-dd')}}}}
+      var patch_dbData = {"properties": {'次の更新日': {"date": {'start': NextPaymentDate_set}}}}
 
       let patch_dbData_options = {
             'method': 'patch',
